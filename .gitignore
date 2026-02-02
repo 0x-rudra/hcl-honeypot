@@ -53,3 +53,6 @@ htmlcov/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# Markdown Files
+POSTMAN_TESTING_GUIDE.md
