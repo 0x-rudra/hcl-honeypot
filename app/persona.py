@@ -2,6 +2,9 @@
 
 import google.generativeai as genai
 from app.config import Config
+import logging
+
+logger = logging.getLogger(__name__)
 
 HONEYPOT_AGENT_INSTRUCTIONS = """You are a honeypot persona agent. Your role is to generate human-like responses to scam messages.
 
@@ -67,4 +70,5 @@ Generate ONLY the response, nothing else. No explanation, no quotes, just the re
             if not reply.endswith("."):
                 reply += "."
 
+        logger.info(f"Persona reply generated: {reply[:50]}...")
         return reply

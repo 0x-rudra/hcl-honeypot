@@ -2,6 +2,9 @@
 
 import google.generativeai as genai
 from app.config import Config
+import logging
+
+logger = logging.getLogger(__name__)
 
 SCAM_DETECTOR_AGENT_INSTRUCTIONS = """You are a scam detection expert agent. Your role is to analyze messages and determine if they are scams.
 
@@ -89,6 +92,7 @@ class ScamDetector:
             return 0.0
 
         score = min(total_score / max_possible_score, 1.0)
+        logger.debug(f"Keyword score calculated: {score:.3f} (matched {total_score} points)")
         return score
 
     @staticmethod
@@ -159,11 +163,13 @@ Context:
             # If parsing fails, use defaults
             pass
 
-        return {
+        result = {
             "is_scam": is_scam,
             "confidence": max(0.0, min(1.0, confidence)),  # Clamp to 0-1
             "reasoning": reasoning,
         }
+        logger.info(f"LLM classification complete: is_scam={is_scam}, confidence={result['confidence']:.3f}")
+        return result
 
     @staticmethod
     def detect(message: str) -> dict:
@@ -182,4 +188,5 @@ Context:
         # Step 2: LLM classification
         llm_result = ScamDetector.classify_with_llm(message, keyword_score)
 
+        logger.info(f"Scam detection complete: {llm_result['is_scam']} (confidence: {llm_result['confidence']:.3f})")
         return llm_result

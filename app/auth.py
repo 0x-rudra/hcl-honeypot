@@ -3,6 +3,9 @@
 from fastapi import Header, HTTPException, status
 from typing import Optional
 from app.config import Config
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 async def validate_api_key(
@@ -27,9 +30,11 @@ async def validate_api_key(
         )
 
     if x_api_key != Config.API_KEY:
+        logger.warning(f"Invalid API key attempt: {x_api_key[:10]}...")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key",
         )
 
+    logger.info("API key validated successfully")
     return x_api_key

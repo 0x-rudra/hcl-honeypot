@@ -68,12 +68,15 @@ async def honeypot(
         logger.info(f"Processing message: {message[:50]}...")
 
         # Step 1: Detect if it's a scam
+        logger.info("Step 1: Starting scam detection...")
         detection_result = ScamDetector.detect(message)
         is_scam = detection_result["is_scam"]
         confidence = detection_result["confidence"]
         reasoning = detection_result["reasoning"]
+        logger.info(f"Scam detection result: is_scam={is_scam}, confidence={confidence:.3f}")
 
         # Step 2: Extract intelligence from the message
+        logger.info("Step 2: Extracting intelligence...")
         intelligence = IntelligenceExtractor.extract(message)
         extracted_intelligence = ExtractedIntelligence(
             bank_accounts=intelligence.get("bank_accounts", []),
@@ -81,14 +84,19 @@ async def honeypot(
             phone_numbers=intelligence.get("phone_numbers", []),
             phishing_urls=intelligence.get("phishing_urls", []),
         )
+        logger.info(f"Intelligence extracted: {sum(len(v) for v in intelligence.values())} total indicators")
 
         # Step 3: Generate honeypot reply if it's a scam
         agent_reply = ""
         if is_scam:
+            logger.info("Step 3: Generating honeypot reply...")
             agent_reply = PersonaGenerator.generate_reply(message)
             logger.info(f"Generated honeypot reply: {agent_reply[:50]}...")
+        else:
+            logger.info("Step 3: Skipping honeypot reply (not a scam)")
 
         # Step 4: Build final response
+        logger.info("Step 4: Building final response...")
         response = HoneypotResponse(
             is_scam=is_scam,
             confidence=confidence,
@@ -97,7 +105,7 @@ async def honeypot(
             reasoning=reasoning,
         )
 
-        logger.info(f"Response ready: is_scam={is_scam}, confidence={confidence}")
+        logger.info(f"✓ Request completed successfully: is_scam={is_scam}, confidence={confidence:.3f}")
         return response
 
     except HTTPException:

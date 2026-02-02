@@ -4,6 +4,9 @@ import re
 from typing import List
 import google.generativeai as genai
 from app.config import Config
+import logging
+
+logger = logging.getLogger(__name__)
 
 EXTRACTOR_AGENT_INSTRUCTIONS = """You are an intelligence extraction agent specialized in identifying scam indicators.
 
@@ -66,7 +69,9 @@ class IntelligenceExtractor:
             if '@' in match and len(match.split('@')[0]) >= 3:
                 valid_upis.append(match)
 
-        return list(set(valid_upis))
+        result = list(set(valid_upis))
+        logger.debug(f"Extracted {len(result)} UPI IDs")
+        return result
 
     @staticmethod
     def extract_phone_numbers(text: str) -> List[str]:
@@ -119,7 +124,9 @@ class IntelligenceExtractor:
             seen.add(clean)
             valid_numbers.append(normalized)
 
-        return list(set(valid_numbers))
+        result = list(set(valid_numbers))
+        logger.debug(f"Extracted {len(result)} phone numbers")
+        return result
 
     @staticmethod
     def extract_urls(text: str) -> List[str]:
@@ -158,7 +165,9 @@ class IntelligenceExtractor:
             if '.' in url and len(url) > 4:
                 valid_urls.append(url)
 
-        return list(set(valid_urls))
+        result = list(set(valid_urls))
+        logger.debug(f"Extracted {len(result)} URLs")
+        return result
 
     @staticmethod
     def extract_bank_accounts(text: str) -> List[str]:
@@ -205,7 +214,9 @@ class IntelligenceExtractor:
                 if len(set(acc)) > 1:
                     valid_accounts.append(f"Account: {acc}")
 
-        return list(set(valid_accounts))
+        result = list(set(valid_accounts))
+        logger.debug(f"Extracted {len(result)} bank accounts/IFSC codes")
+        return result
 
     @staticmethod
     def extract_with_llm_fallback(text: str) -> dict:
@@ -279,6 +290,7 @@ If none found, use empty lists."""
         except Exception:
             pass
 
+        logger.debug(f"LLM fallback extraction: {sum(len(v) for v in result.values())} total indicators")
         return result
 
     @staticmethod
@@ -292,4 +304,7 @@ If none found, use empty lists."""
         Returns:
             Dictionary with extracted indicators
         """
-        return IntelligenceExtractor.extract_with_llm_fallback(message)
+        result = IntelligenceExtractor.extract_with_llm_fallback(message)
+        total_indicators = sum(len(v) for v in result.values())
+        logger.info(f"Intelligence extraction complete: {total_indicators} indicators found")
+        return result
