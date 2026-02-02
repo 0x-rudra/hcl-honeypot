@@ -711,10 +711,10 @@ curl https://your-domain.com/health
 ### Issue: "Invalid API key"
 **Solution:** Verify `HONEYPOT_API_KEY` in `.env` matches your request header.
 
-### Issue: "Gemini API quota exceeded"
+### Issue: "Gemini API quota exceeded."
 **Solution:**
 1. Wait for quota reset
-2. Switch to model with higher quota in `.env`:
+2. Switch to the model with a higher quota in `.env`:
    ```env
    GEMINI_MODEL=gemini-1.5-flash
    ```
@@ -726,7 +726,7 @@ curl https://your-domain.com/health
    ```bash
    netstat -ano | findstr :8000
    ```
-2. Use different port:
+2. Use a different port:
    ```bash
    uvicorn app.main:app --port 8001
    ```
@@ -739,7 +739,7 @@ DEBUG=True
 
 ### Issue: Session not persisting
 **Solution:**
-1. Verify you're sending same `session_id`
+1. Verify you're sending the same `session_id`
 2. Check session hasn't expired (30 min timeout)
 3. Verify server hasn't restarted (sessions are in-memory)
 
@@ -777,7 +777,7 @@ git checkout -b feature/your-feature-name
 2. Add tests for new features
 3. Ensure all tests pass
 4. Update CHANGELOG.md
-5. Submit PR with clear description
+5. Submit PR with a clear description
 
 ---
 
@@ -800,7 +800,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 - **Issues:** [GitHub Issues](https://github.com/0x-rudra/hcl-honeypot/issues)
 - **Documentation:** See `POSTMAN_TESTING_GUIDE.md` for comprehensive testing
-- **Email:** rudrasharma2004@gmail.com
+- **Email:** rudransha.g9_cse@outlook.com  
 
 ---
 
