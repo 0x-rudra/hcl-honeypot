@@ -6,7 +6,7 @@ import os
 class Config:
     """Application configuration."""
 
-    API_KEY: str = os.getenv("HONEYPOT_API_KEY", "your-secret-key-here")
+    API_KEY: str = os.getenv("HONEYPOT_API_KEY", "honeypot-test-key-2026-secure")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
     GEMINI_MODEL: str = "gemini-2.0-flash"
 

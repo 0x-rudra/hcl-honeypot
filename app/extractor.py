@@ -47,18 +47,8 @@ class IntelligenceExtractor:
     """
 
     # Bank account patterns - multiple formats
-    BANK_ACCOUNT_PATTERN = r"""
-        (?:
-            (?:account|acc|a/c|acct|bank\s*account|bank\s*acc)
-            (?:\s*(?:no|number|num|#|:|\.))?
-            \s*[:\-.]?\s*
-            (\d{9,18})                     # Account number - captured
-        )|(?:
-            (?:IFSC|ifsc)
-            \s*[:\-.]?\s*
-            ([A-Z]{4}0[A-Z0-9]{6})        # IFSC code - captured
-        )
-    """
+    BANK_ACCOUNT_PATTERN = r"(?:(?:account|acc|acct|bank\s*account|bank\s*acc)(?:\s*(?:no|number|num|#|:|\.))?)\s*[:\-.]?\s*(\d{9,18})|(?:(?:IFSC|ifsc)\s*[:\-.]?\s*([A-Z]{4}0[A-Z0-9]{6}))"
+
 
     @staticmethod
     def extract_upi_ids(text: str) -> List[str]:
@@ -176,7 +166,7 @@ class IntelligenceExtractor:
         results = []
 
         # Extract account numbers with context
-        account_matches = re.findall(IntelligenceExtractor.BANK_ACCOUNT_PATTERN, text, re.IGNORECASE | re.VERBOSE)
+        account_matches = re.findall(IntelligenceExtractor.BANK_ACCOUNT_PATTERN, text, re.IGNORECASE)
         for match in account_matches:
             if isinstance(match, tuple):
                 # Get non-empty groups
