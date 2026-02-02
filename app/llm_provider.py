@@ -3,7 +3,7 @@
 import google.generativeai as genai
 from app.config import Config
 import logging
-from typing import Optional
+# from typing import Optional
 
 logger = logging.getLogger(__name__)
 
