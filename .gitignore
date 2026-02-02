@@ -27,6 +27,7 @@ wheels/
 
 # Virtual environments
 venv/
+myenv/
 ENV/
 env/
 .venv
@@ -48,6 +49,26 @@ Thumbs.db
 
 # Testing
 .pytest_cache/
+.coverage
+htmlcov/
+
+# Session data and cache
+sessions/
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+*.txt
+sid.txt
+session.txt
+session_id.txt
+
+# Coverage reports
+coverage.xml
+.coverage.*
 .coverage
 htmlcov/
 

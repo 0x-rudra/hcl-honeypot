@@ -1,7 +1,7 @@
 """Honeypot persona generator using Google AI Studio agent."""
 
-import google.generativeai as genai
 from app.config import Config
+from app.llm_provider import get_llm_provider
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,16 +23,27 @@ class PersonaGenerator:
     """Generates human-like honeypot replies to engage scammers."""
 
     @staticmethod
-    def generate_reply(message: str) -> str:
+    def generate_reply(message: str, conversation_context: str = "") -> str:
         """
-        Generate a confused, cooperative honeypot reply.
+        Generate a confused, cooperative honeypot reply with conversation context.
 
         Args:
             message: The scam message to respond to
+            conversation_context: Previous conversation history for context-aware replies
 
         Returns:
             A human-like honeypot reply (1-2 sentences)
         """
+        # Build context-aware prompt
+        context_section = ""
+        if conversation_context:
+            context_section = f"""
+Previous conversation:
+{conversation_context}
+
+Remember this context when generating your reply - be consistent with what you've said before.
+"""
+
         prompt = f"""Generate a honeypot reply to this scam message.
 
 Scam message: "{message}"
@@ -43,25 +54,19 @@ Requirements:
 - Be cooperative and willing to help
 - Use casual language and maybe an emoji or two
 - Encourage the scammer to share more details
+- If this is part of an ongoing conversation, maintain consistency with previous messages
 
 Generate ONLY the response, nothing else. No explanation, no quotes, just the reply."""
 
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-        generation_config = genai.GenerationConfig(
+        llm = get_llm_provider()
+        reply = llm.generate_content(
+            prompt=prompt,
+            system_instruction=HONEYPOT_AGENT_INSTRUCTIONS + (f"\n\n{context_section}" if context_section else ""),
             temperature=0.9,
+            max_tokens=150,
             top_p=Config.AGENT_TOP_P,
             top_k=Config.AGENT_TOP_K,
-            max_output_tokens=150,
         )
-
-        model = genai.GenerativeModel(
-            model_name=Config.GEMINI_MODEL,
-            generation_config=generation_config,
-            system_instruction=HONEYPOT_AGENT_INSTRUCTIONS,
-        )
-
-        response = model.generate_content(prompt)
-        reply = response.text.strip()
 
         # Ensure it's 1-2 sentences max
         sentences = reply.split(".")

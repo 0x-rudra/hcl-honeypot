@@ -11,10 +11,11 @@ except ImportError:
 
 from app.config import Config
 from app.auth import validate_api_key
-from app.schemas import HoneypotRequest, HoneypotResponse, ExtractedIntelligence
+from app.schemas import HoneypotRequest, HoneypotResponse, ExtractedIntelligence, ConversationHistoryItem
 from app.scam_detector import ScamDetector
 from app.persona import PersonaGenerator
 from app.extractor import IntelligenceExtractor
+from app.session import session_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -45,16 +46,16 @@ async def honeypot(
     api_key: str = Depends(validate_api_key),
 ) -> HoneypotResponse:
     """
-    Main honeypot endpoint.
+    Main honeypot endpoint with conversation support.
 
-    Detects scams, generates honeypot replies, and extracts intelligence.
+    Detects scams, generates context-aware honeypot replies, and extracts intelligence.
 
     Args:
-        request: Request containing the message to analyze
+        request: Request containing the message and optional session_id
         api_key: Validated API key from header
 
     Returns:
-        Structured response with scam detection results
+        Structured response with scam detection results and conversation history
     """
     try:
         message = request.message.strip()
@@ -65,7 +66,12 @@ async def honeypot(
                 detail="Message cannot be empty",
             )
 
-        logger.info(f"Processing message: {message[:50]}...")
+        # Get or create session
+        session_id, session = session_manager.get_or_create_session(request.session_id)
+        logger.info(f"Processing message in session {session_id}: {message[:50]}...")
+
+        # Add user message to conversation history
+        session.add_message("user", message)
 
         # Step 1: Detect if it's a scam
         logger.info("Step 1: Starting scam detection...")
@@ -86,14 +92,32 @@ async def honeypot(
         )
         logger.info(f"Intelligence extracted: {sum(len(v) for v in intelligence.values())} total indicators")
 
-        # Step 3: Generate honeypot reply if it's a scam
+        # Update session intelligence
+        session.update_intelligence(intelligence)
+
+        # Step 3: Generate context-aware honeypot reply if it's a scam
         agent_reply = ""
         if is_scam:
-            logger.info("Step 3: Generating honeypot reply...")
-            agent_reply = PersonaGenerator.generate_reply(message)
+            logger.info("Step 3: Generating context-aware honeypot reply...")
+            conversation_context = session.get_context_for_llm(max_messages=10)
+            agent_reply = PersonaGenerator.generate_reply(message, conversation_context)
             logger.info(f"Generated honeypot reply: {agent_reply[:50]}...")
+
+            # Add assistant reply to conversation history
+            session.add_message("assistant", agent_reply)
         else:
             logger.info("Step 3: Skipping honeypot reply (not a scam)")
+
+        # Get accumulated intelligence across the conversation
+        accumulated_intelligence = ExtractedIntelligence(
+            **session.get_accumulated_intelligence()
+        )
+
+        # Get conversation history
+        conversation_history = [
+            ConversationHistoryItem(**msg)
+            for msg in session.get_conversation_history()
+        ]
 
         # Step 4: Build final response
         logger.info("Step 4: Building final response...")
@@ -103,18 +127,36 @@ async def honeypot(
             agent_reply=agent_reply,
             extracted_intelligence=extracted_intelligence,
             reasoning=reasoning,
+            session_id=session_id,
+            conversation_history=conversation_history,
+            accumulated_intelligence=accumulated_intelligence,
         )
 
-        logger.info(f"✓ Request completed successfully: is_scam={is_scam}, confidence={confidence:.3f}")
+        logger.info(
+            f"✓ Request completed successfully: session={session_id}, "
+            f"is_scam={is_scam}, confidence={confidence:.3f}, "
+            f"total_messages={len(conversation_history)}, "
+            f"total_intelligence={sum(len(v) for v in accumulated_intelligence.dict().values())}"
+        )
         return response
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Error processing request: {error_msg}")
+
+        # Check if it's a quota/rate limit error
+        if "429" in error_msg or "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="API quota exceeded. Please try again later or check your Gemini API quota at https://ai.google.dev/gemini-api/docs/rate-limits",
+            )
+
+        # Generic error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
+            detail=f"Internal server error: {error_msg[:100]}",
         )
 
 

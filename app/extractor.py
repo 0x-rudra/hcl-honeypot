@@ -2,8 +2,8 @@
 
 import re
 from typing import List
-import google.generativeai as genai
 from app.config import Config
+from app.llm_provider import get_llm_provider
 import logging
 
 logger = logging.getLogger(__name__)
@@ -254,22 +254,15 @@ phishing_urls: [list]
 
 If none found, use empty lists."""
 
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-        generation_config = genai.GenerationConfig(
+        llm = get_llm_provider()
+        response_text = llm.generate_content(
+            prompt=prompt,
+            system_instruction=EXTRACTOR_AGENT_INSTRUCTIONS,
             temperature=0.1,
+            max_tokens=500,
             top_p=0.95,
             top_k=40,
-            max_output_tokens=500,
         )
-
-        model = genai.GenerativeModel(
-            model_name=Config.GEMINI_MODEL,
-            generation_config=generation_config,
-            system_instruction=EXTRACTOR_AGENT_INSTRUCTIONS,
-        )
-
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
 
         # Parse LLM response
         try:

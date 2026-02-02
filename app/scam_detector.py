@@ -1,7 +1,7 @@
 """Scam detection engine using Google AI Studio agent-based analysis."""
 
-import google.generativeai as genai
 from app.config import Config
+from app.llm_provider import get_llm_provider
 import logging
 
 logger = logging.getLogger(__name__)
@@ -123,22 +123,15 @@ Context:
 - Return ONLY the three lines, nothing else
 """
 
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-        generation_config = genai.GenerationConfig(
+        llm = get_llm_provider()
+        response_text = llm.generate_content(
+            prompt=prompt,
+            system_instruction=SCAM_DETECTOR_AGENT_INSTRUCTIONS,
             temperature=Config.AGENT_TEMPERATURE,
+            max_tokens=Config.AGENT_MAX_OUTPUT_TOKENS,
             top_p=Config.AGENT_TOP_P,
             top_k=Config.AGENT_TOP_K,
-            max_output_tokens=Config.AGENT_MAX_OUTPUT_TOKENS,
         )
-
-        model = genai.GenerativeModel(
-            model_name=Config.GEMINI_MODEL,
-            generation_config=generation_config,
-            system_instruction=SCAM_DETECTOR_AGENT_INSTRUCTIONS,
-        )
-
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
 
         # Parse the response
         lines = response_text.split("\n")
