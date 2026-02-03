@@ -61,7 +61,6 @@ sessions/
 # Temporary files
 *.tmp
 *.temp
-*.txt
 sid.txt
 session.txt
 session_id.txt
