@@ -107,14 +107,22 @@ class Session:
         Args:
             intelligence: Dictionary with extracted indicators
         """
-        for key in self.extracted_intelligence:
-            if key in intelligence and intelligence[key]:
-                self.extracted_intelligence[key].update(intelligence[key])
+        try:
+            if not intelligence or not isinstance(intelligence, dict):
+                return
 
-        logger.info(
-            f"Session {self.session_id}: Updated intelligence - "
-            f"Total indicators: {sum(len(v) for v in self.extracted_intelligence.values())}"
-        )
+            for key in self.extracted_intelligence:
+                if key in intelligence and intelligence[key]:
+                    # Ensure it's iterable before updating
+                    if isinstance(intelligence[key], (list, set, tuple)):
+                        self.extracted_intelligence[key].update(intelligence[key])
+
+            logger.info(
+                f"Session {self.session_id}: Updated intelligence - "
+                f"Total indicators: {sum(len(v) for v in self.extracted_intelligence.values())}"
+            )
+        except Exception as e:
+            logger.error(f"Error updating intelligence for session {self.session_id}: {e}")
 
     def get_accumulated_intelligence(self) -> dict:
         """Get all intelligence accumulated during the session."""
@@ -130,7 +138,7 @@ class Session:
         Check if session has expired.
 
         Args:
-            timeout_minutes: Session timeout in minutes
+            timeout_minutes: Session timeout in minutes (default 30)
 
         Returns:
             True if session is expired
@@ -140,6 +148,22 @@ class Session:
         if is_expired:
             logger.debug(f"Session {self.session_id}: Expired (inactive for {timeout_minutes}min)")
         return is_expired
+
+    def get_full_conversation_json(self) -> dict:
+        """
+        Get the complete conversation history in JSON format.
+
+        Returns:
+            Dictionary with session info, conversation history, and extracted intelligence
+        """
+        return {
+            "session_id": self.session_id,
+            "created_at": self.created_at.isoformat(),
+            "ended_at": datetime.now().isoformat(),
+            "total_messages": len(self.messages),
+            "conversation_history": self.get_conversation_history(),
+            "extracted_intelligence": self.get_accumulated_intelligence(),
+        }
 
     @staticmethod
     def is_exit_message(message: str) -> bool:
@@ -155,7 +179,9 @@ class Session:
         exit_words = {
             'exit', 'quit', 'bye', 'goodbye', 'end', 'stop',
             'close', 'terminate', 'finish', 'done', 'leave',
-            'end conversation', 'end chat', 'stop conversation'
+            'end conversation', 'end chat', 'stop conversation',
+            'reset', 'clear', 'new conversation', 'start over',
+            'restart', 'fresh start'
         }
 
         message_lower = message.lower().strip()
@@ -177,9 +203,10 @@ class SessionManager:
         Initialize the session manager.
 
         Args:
-            session_timeout_minutes: How long to keep inactive sessions
+            session_timeout_minutes: How long to keep inactive sessions (default 30 minutes)
         """
         self.sessions: Dict[str, Session] = {}
+        self.api_key_sessions: Dict[str, str] = {}  # Maps API key to session_id
         self.session_timeout_minutes = session_timeout_minutes
         logger.info(f"SessionManager initialized with {session_timeout_minutes}min timeout")
 
@@ -209,22 +236,35 @@ class SessionManager:
 
         session = self.sessions.get(session_id)
         if session and session.is_expired(self.session_timeout_minutes):
-            logger.info(f"Session {session_id} expired, removing")
+            logger.info(f"Session {session_id} expired, extracting and removing")
+
+            # Extract intelligence before deletion
+            if len(session.messages) > 0:
+                try:
+                    self._extract_from_conversation(session)
+                    conversation_json = session.get_full_conversation_json()
+                    logger.info(f"Extracted intelligence from expired session {session_id}")
+                except Exception as e:
+                    logger.error(f"Error extracting from expired session {session_id}: {e}")
+
             del self.sessions[session_id]
             return None
 
         return session
 
-    def get_or_create_session(self, session_id: Optional[str] = None) -> tuple[str, Session]:
+    def get_or_create_session(self, session_id: Optional[str] = None, api_key: Optional[str] = None) -> tuple[str, Session]:
         """
         Get existing session or create new one.
+        Supports automatic session tracking by API key when session_id is not provided.
 
         Args:
-            session_id: Optional existing session ID
+            session_id: Optional existing session ID (explicit mode)
+            api_key: Optional API key for automatic session tracking
 
         Returns:
             Tuple of (session_id, session)
         """
+        # Mode 1: Explicit session_id provided (priority)
         if session_id:
             session = self.get_session(session_id)
             if session:
@@ -236,12 +276,35 @@ class SessionManager:
             else:
                 logger.warning(f"Session {session_id} not found or expired, creating new session")
 
+        # Mode 2: Automatic session tracking by API key
+        elif api_key:
+            # Check if API key has an active session
+            if api_key in self.api_key_sessions:
+                tracked_session_id = self.api_key_sessions[api_key]
+                session = self.get_session(tracked_session_id)
+                if session:
+                    logger.info(
+                        f"Auto-retrieved session for API key: {tracked_session_id} "
+                        f"(messages: {len(session.messages)})"
+                    )
+                    return tracked_session_id, session
+                else:
+                    # Session expired, remove from tracking
+                    logger.info(f"Auto-tracked session expired for API key")
+                    del self.api_key_sessions[api_key]
+
         # Create new session if not found or expired
         new_session_id = self.create_session()
+
+        # Track by API key if provided
+        if api_key and not session_id:
+            self.api_key_sessions[api_key] = new_session_id
+            logger.info(f"Auto-tracking new session {new_session_id} for API key")
+
         return new_session_id, self.sessions[new_session_id]
 
     def _cleanup_expired_sessions(self) -> None:
-        """Remove expired sessions."""
+        """Remove expired sessions and extract intelligence from them."""
         expired_ids = [
             sid
             for sid, session in self.sessions.items()
@@ -249,6 +312,20 @@ class SessionManager:
         ]
 
         for sid in expired_ids:
+            session = self.sessions[sid]
+            message_count = len(session.messages)
+
+            # Extract intelligence from expired session if it has messages
+            if message_count > 0:
+                logger.info(f"Extracting intelligence from expired session {sid} with {message_count} messages")
+                try:
+                    self._extract_from_conversation(session)
+                    # Save conversation JSON before deletion
+                    conversation_json = session.get_full_conversation_json()
+                    logger.info(f"Saved conversation data from expired session {sid}")
+                except Exception as e:
+                    logger.error(f"Error extracting from expired session {sid}: {e}")
+
             del self.sessions[sid]
 
         if expired_ids:
@@ -261,26 +338,81 @@ class SessionManager:
         logger.debug(f"Active sessions: {count}")
         return count
 
-    def end_session(self, session_id: str) -> bool:
+    def clear_api_key_session(self, api_key: str) -> None:
         """
-        End and remove a session.
+        Clear session tracking for an API key to start fresh conversation.
+
+        Args:
+            api_key: The API key to clear session for
+        """
+        if api_key in self.api_key_sessions:
+            old_session_id = self.api_key_sessions[api_key]
+            del self.api_key_sessions[api_key]
+            logger.info(f"Cleared API key tracking (old session: {old_session_id})")
+
+    def end_session(self, session_id: str, extract_intelligence: bool = True) -> Optional[dict]:
+        """
+        End and remove a session, optionally extracting final intelligence.
 
         Args:
             session_id: The session identifier to end
+            extract_intelligence: Whether to extract intelligence from full conversation
 
         Returns:
-            True if session was found and removed, False otherwise
+            Dictionary with conversation JSON and extracted intelligence if successful, None otherwise
         """
         if session_id in self.sessions:
             session = self.sessions[session_id]
             message_count = len(session.messages)
+
+            # Get full conversation data before deletion
+            conversation_json = session.get_full_conversation_json()
+
+            # Extract intelligence from full conversation if requested
+            final_extraction = None
+            if extract_intelligence and message_count > 0:
+                logger.info(f"Extracting intelligence from session {session_id} with {message_count} messages")
+                final_extraction = self._extract_from_conversation(session)
+
+            # Delete the session
             del self.sessions[session_id]
             logger.info(f"Session {session_id} ended (had {message_count} messages)")
-            return True
+
+            return {
+                "conversation_data": conversation_json,
+                "final_extraction": final_extraction,
+            }
         else:
             logger.warning(f"Attempted to end non-existent session: {session_id}")
-            return False
+            return None
+
+    def _extract_from_conversation(self, session: Session) -> dict:
+        """
+        Extract intelligence from the entire conversation history.
+
+        Args:
+            session: The session to extract from
+
+        Returns:
+            Dictionary with extracted intelligence
+        """
+        from app.extractor import IntelligenceExtractor
+
+        # Combine all conversation messages into one text for extraction
+        full_conversation = "\n".join([
+            f"{msg.role}: {msg.content}"
+            for msg in session.messages
+        ])
+
+        # Extract intelligence from the full conversation
+        extracted = IntelligenceExtractor.extract(full_conversation)
+        logger.info(
+            f"Final extraction from session {session.session_id}: "
+            f"{sum(len(v) for v in extracted.values())} total indicators"
+        )
+
+        return extracted
 
 
-# Global session manager instance
+# Global session manager instance with 30-minute timeout
 session_manager = SessionManager(session_timeout_minutes=30)

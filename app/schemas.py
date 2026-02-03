@@ -44,3 +44,6 @@ class HoneypotResponse(BaseModel):
     accumulated_intelligence: ExtractedIntelligence = Field(
         ..., description="All intelligence gathered across the conversation"
     )
+    final_extraction: Optional[ExtractedIntelligence] = Field(
+        None, description="Final extraction from entire conversation when session ends"
+    )
