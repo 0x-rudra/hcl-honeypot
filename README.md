@@ -41,6 +41,7 @@ An intelligent FastAPI application that detects scam messages, generates honeypo
 - [Testing](#-testing)
 - [Architecture](#-architecture)
 - [Production Deployment](#-production-deployment)
+- [Deploy to Render](#-deploy-to-render)
 - [Troubleshooting](#-troubleshooting)
 - [Contributing](#-contributing)
 
@@ -801,6 +802,33 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - **FastAPI** - For the excellent web framework
 - **Pydantic** - For data validation
 - **Uvicorn** - For ASGI server
+
+---
+
+## 🚀 Deploy to Render
+
+### **Quick Deploy (5 Minutes):**
+
+1. **Sign up at [Render.com](https://render.com)** (free, no credit card)
+
+2. **Create New Web Service:**
+   - Dashboard → "New +" → "Web Service"
+   - Connect your GitHub: `0x-rudra/hcl-honeypot`
+   - Render auto-detects `render.yaml`
+
+3. **Set Environment Variable:**
+   - Add `GEMINI_API_KEY` = your-api-key
+
+4. **Deploy!**
+   - Your API will be live at: `https://hcl-honeypot-api.onrender.com`
+
+### **Features:**
+- ✅ Automatic HTTPS
+- ✅ Auto-deploy from GitHub
+- ✅ Free 750 hours/month
+- ✅ Built-in monitoring & logs
+
+**📖 Full deployment guide:** See [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ---
 
