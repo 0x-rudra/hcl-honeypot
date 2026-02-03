@@ -37,6 +37,7 @@ class HoneypotResponse(BaseModel):
     extracted_intelligence: ExtractedIntelligence = Field(..., description="Extracted scam indicators")
     reasoning: str = Field(..., description="Reasoning for the classification")
     session_id: str = Field(..., description="Session ID for conversation tracking")
+    session_ended: bool = Field(default=False, description="True if session was terminated by exit command")
     conversation_history: List[ConversationHistoryItem] = Field(
         default_factory=list, description="Full conversation history"
     )

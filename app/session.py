@@ -141,6 +141,33 @@ class Session:
             logger.debug(f"Session {self.session_id}: Expired (inactive for {timeout_minutes}min)")
         return is_expired
 
+    @staticmethod
+    def is_exit_message(message: str) -> bool:
+        """
+        Check if message contains exit keywords.
+
+        Args:
+            message: The user message to check
+
+        Returns:
+            True if message indicates user wants to exit
+        """
+        exit_words = {
+            'exit', 'quit', 'bye', 'goodbye', 'end', 'stop',
+            'close', 'terminate', 'finish', 'done', 'leave',
+            'end conversation', 'end chat', 'stop conversation'
+        }
+
+        message_lower = message.lower().strip()
+
+        # Check for exact matches or if message starts/ends with exit word
+        for word in exit_words:
+            if message_lower == word or message_lower.startswith(word + ' ') or message_lower.endswith(' ' + word):
+                logger.info(f"Exit keyword detected: '{word}' in message: '{message[:50]}'")
+                return True
+
+        return False
+
 
 class SessionManager:
     """Manages conversation sessions."""
@@ -233,6 +260,26 @@ class SessionManager:
         count = len(self.sessions)
         logger.debug(f"Active sessions: {count}")
         return count
+
+    def end_session(self, session_id: str) -> bool:
+        """
+        End and remove a session.
+
+        Args:
+            session_id: The session identifier to end
+
+        Returns:
+            True if session was found and removed, False otherwise
+        """
+        if session_id in self.sessions:
+            session = self.sessions[session_id]
+            message_count = len(session.messages)
+            del self.sessions[session_id]
+            logger.info(f"Session {session_id} ended (had {message_count} messages)")
+            return True
+        else:
+            logger.warning(f"Attempted to end non-existent session: {session_id}")
+            return False
 
 
 # Global session manager instance

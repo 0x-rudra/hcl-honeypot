@@ -16,6 +16,7 @@ An intelligent FastAPI application that detects scam messages, generates honeypo
 - **🔍 Intelligence Extraction** - Automatically extracts UPI IDs, phone numbers, bank accounts, and URLs
 - **💬 Multi-turn Conversations** - Maintains session context across multiple messages
 - **📊 Intelligence Accumulation** - Tracks and aggregates extracted data across entire conversation
+- **🚪 Automatic Session Exit** - End conversations naturally with exit keywords (exit, bye, quit, etc.)
 - **🔐 API Key Authentication** - Secured with x-api-key header validation
 - **🔄 Flexible LLM Provider** - Easy switching between different AI models and providers
 
@@ -518,6 +519,13 @@ python test_server.py
 python test_extractor.py
 ```
 
+### Exit Feature Tests
+```bash
+python test_exit_feature.py
+```
+
+**See:** [EXIT_FEATURE_GUIDE.md](EXIT_FEATURE_GUIDE.md) for detailed documentation on automatic session termination.
+
 ### Comprehensive Postman Tests
 
 The project includes **191 comprehensive test cases** for Postman:
@@ -800,7 +808,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 - **Issues:** [GitHub Issues](https://github.com/0x-rudra/hcl-honeypot/issues)
 - **Documentation:** See `POSTMAN_TESTING_GUIDE.md` for comprehensive testing
-- **Email:** rudransha.g9_cse@outlook.com  
+- **Email:** rudransha.g9_cse@outlook.com
 
 ---
 
@@ -816,6 +824,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - ✅ LLM provider abstraction
 - ✅ Comprehensive logging
 - ✅ 191 Postman test cases
+- ✅ Automatic session exit with 14+ exit keywords
 
 **Upcoming:**
 - [ ] OpenAI provider support

@@ -70,6 +70,40 @@ async def honeypot(
         session_id, session = session_manager.get_or_create_session(request.session_id)
         logger.info(f"Processing message in session {session_id}: {message[:50]}...")
 
+        # Check for exit command
+        session_ended = False
+        if session.is_exit_message(message):
+            logger.info(f"Exit command detected in session {session_id}")
+            session_ended = True
+
+            # Add user message to conversation history before ending
+            session.add_message("user", message)
+
+            # Get final conversation data before deleting session
+            conversation_history = [
+                ConversationHistoryItem(**msg)
+                for msg in session.get_conversation_history()
+            ]
+            accumulated_intelligence = ExtractedIntelligence(
+                **session.get_accumulated_intelligence()
+            )
+
+            # End the session
+            session_manager.end_session(session_id)
+
+            # Return final response with session ended flag
+            return HoneypotResponse(
+                is_scam=False,
+                confidence=0.0,
+                agent_reply="Goodbye! Session has been ended. Thank you for using the Honeypot API.",
+                extracted_intelligence=ExtractedIntelligence(),
+                reasoning="User requested to end the conversation",
+                session_id=session_id,
+                session_ended=True,
+                conversation_history=conversation_history,
+                accumulated_intelligence=accumulated_intelligence,
+            )
+
         # Add user message to conversation history
         session.add_message("user", message)
 
@@ -128,6 +162,7 @@ async def honeypot(
             extracted_intelligence=extracted_intelligence,
             reasoning=reasoning,
             session_id=session_id,
+            session_ended=False,
             conversation_history=conversation_history,
             accumulated_intelligence=accumulated_intelligence,
         )
