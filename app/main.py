@@ -131,7 +131,7 @@ async def test_endpoint(raw_request: Request, api_key: str = Depends(validate_ap
     try:
         body = await raw_request.json()
         logger.info(f"Test endpoint received: {body}")
-        
+
         return {
             "status": "success",
             "message": "API is working correctly",
@@ -201,7 +201,7 @@ async def honeypot(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid JSON body. Expected format: {\"message\": \"your message here\"}",
             )
-        
+
         # Validate request against schema
         try:
             request = HoneypotRequest(**body)
@@ -211,7 +211,7 @@ async def honeypot(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid request format: {str(e)}. Required field: 'message'",
             )
-        
+
         # Input validation
         if not request.message:
             raise HTTPException(
