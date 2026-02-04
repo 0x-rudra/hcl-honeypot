@@ -3,6 +3,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
 import time
@@ -81,6 +82,32 @@ async def log_requests(request: Request, call_next):
     except Exception as e:
         logger.error(f"Request failed: {str(e)}")
         raise
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle Pydantic validation errors with user-friendly messages."""
+    errors = exc.errors()
+    logger.error(f"Validation error: {errors}")
+    
+    # Extract field names that failed validation
+    missing_fields = [err['loc'][-1] for err in errors if err['type'] == 'missing']
+    
+    if missing_fields:
+        detail = f"Missing required field(s): {', '.join(missing_fields)}"
+    else:
+        detail = "Invalid request body format"
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": detail,
+            "errors": errors,
+            "example_request": {
+                "message": "Hello, I have a business opportunity for you"
+            }
+        },
+    )
 
 
 @app.exception_handler(Exception)
