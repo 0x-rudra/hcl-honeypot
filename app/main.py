@@ -95,6 +95,33 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+@app.get("/honeypot")
+async def honeypot_info() -> dict:
+    """
+    GET endpoint for /honeypot that provides usage information.
+
+    Returns instructions on how to properly use the honeypot endpoint.
+    """
+    return {
+        "error": "Method Not Allowed",
+        "message": "This endpoint only accepts POST requests",
+        "usage": {
+            "method": "POST",
+            "url": "/honeypot",
+            "headers": {
+                "x-api-key": "your-api-key-here",
+                "Content-Type": "application/json"
+            },
+            "body": {
+                "message": "Your message to analyze",
+                "session_id": "optional-session-id"
+            }
+        },
+        "example_curl": 'curl -X POST https://hcl-honeypot-api.onrender.com/honeypot -H "x-api-key: your-key" -H "Content-Type: application/json" -d \'{"message": "Test message"}\'',
+        "documentation": "See POSTMAN_TESTING_GUIDE.md for detailed testing instructions"
+    }
+
+
 @app.post("/honeypot", response_model=HoneypotResponse)
 async def honeypot(
     request: HoneypotRequest,
