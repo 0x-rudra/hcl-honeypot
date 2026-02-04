@@ -89,15 +89,15 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """Handle Pydantic validation errors with user-friendly messages."""
     errors = exc.errors()
     logger.error(f"Validation error: {errors}")
-    
+
     # Extract field names that failed validation
     missing_fields = [err['loc'][-1] for err in errors if err['type'] == 'missing']
-    
+
     if missing_fields:
         detail = f"Missing required field(s): {', '.join(missing_fields)}"
     else:
         detail = "Invalid request body format"
-    
+
     return JSONResponse(
         status_code=422,
         content={
