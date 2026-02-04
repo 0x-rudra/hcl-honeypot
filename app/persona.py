@@ -66,6 +66,7 @@ Generate ONLY the response, nothing else. No explanation, no quotes, just the re
             max_tokens=150,
             top_p=Config.AGENT_TOP_P,
             top_k=Config.AGENT_TOP_K,
+            timeout=8,
         )
 
         # Ensure it's 1-2 sentences max

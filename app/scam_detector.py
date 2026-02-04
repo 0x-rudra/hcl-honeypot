@@ -128,9 +128,10 @@ Context:
             prompt=prompt,
             system_instruction=SCAM_DETECTOR_AGENT_INSTRUCTIONS,
             temperature=Config.AGENT_TEMPERATURE,
-            max_tokens=Config.AGENT_MAX_OUTPUT_TOKENS,
+            max_tokens=min(Config.AGENT_MAX_OUTPUT_TOKENS, 512),
             top_p=Config.AGENT_TOP_P,
             top_k=Config.AGENT_TOP_K,
+            timeout=10,
         )
 
         # Parse the response

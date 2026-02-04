@@ -65,10 +65,14 @@ app.add_middleware(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Middleware to log all requests and add timing information."""
+    # Skip logging for health checks to reduce noise
+    is_health_check = request.url.path in ["/health", "/"]
+
     start_time = time.time()
 
-    # Log incoming request
-    logger.info(f"Incoming request: {request.method} {request.url.path}")
+    # Log incoming request (except health checks)
+    if not is_health_check:
+        logger.info(f"Incoming request: {request.method} {request.url.path}")
 
     try:
         response = await call_next(request)
@@ -77,7 +81,9 @@ async def log_requests(request: Request, call_next):
         # Add timing header
         response.headers["X-Process-Time"] = str(process_time)
 
-        logger.info(f"Request completed in {process_time:.3f}s with status {response.status_code}")
+        # Log completion (except health checks)
+        if not is_health_check:
+            logger.info(f"Request completed in {process_time:.3f}s with status {response.status_code}")
         return response
     except Exception as e:
         logger.error(f"Request failed: {str(e)}")

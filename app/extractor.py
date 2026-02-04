@@ -262,6 +262,7 @@ If none found, use empty lists."""
             max_tokens=500,
             top_p=0.95,
             top_k=40,
+            timeout=10,
         )
 
         # Parse LLM response
