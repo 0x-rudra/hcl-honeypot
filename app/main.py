@@ -122,6 +122,30 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+@app.post("/test")
+async def test_endpoint(raw_request: Request, api_key: str = Depends(validate_api_key)) -> dict:
+    """
+    Simple test endpoint for hackathon validation.
+    Accepts any valid JSON and returns a success response.
+    """
+    try:
+        body = await raw_request.json()
+        logger.info(f"Test endpoint received: {body}")
+        
+        return {
+            "status": "success",
+            "message": "API is working correctly",
+            "received": body,
+            "authenticated": True
+        }
+    except Exception as e:
+        logger.error(f"Test endpoint error: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
 @app.get("/honeypot")
 async def honeypot_info() -> dict:
     """
@@ -151,7 +175,7 @@ async def honeypot_info() -> dict:
 
 @app.post("/honeypot", response_model=HoneypotResponse)
 async def honeypot(
-    request: HoneypotRequest,
+    raw_request: Request,
     api_key: str = Depends(validate_api_key),
 ) -> HoneypotResponse:
     """
@@ -160,13 +184,34 @@ async def honeypot(
     Detects scams, generates context-aware honeypot replies, and extracts intelligence.
 
     Args:
-        request: Request containing the message and optional session_id
+        raw_request: Raw request object for flexible body parsing
         api_key: Validated API key from header
 
     Returns:
         Structured response with scam detection results and conversation history
     """
     try:
+        # Parse request body with better error handling
+        try:
+            body = await raw_request.json()
+            logger.info(f"Received body: {body}")
+        except Exception as e:
+            logger.error(f"Failed to parse JSON body: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid JSON body. Expected format: {\"message\": \"your message here\"}",
+            )
+        
+        # Validate request against schema
+        try:
+            request = HoneypotRequest(**body)
+        except Exception as e:
+            logger.error(f"Schema validation failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid request format: {str(e)}. Required field: 'message'",
+            )
+        
         # Input validation
         if not request.message:
             raise HTTPException(
