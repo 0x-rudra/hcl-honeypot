@@ -53,6 +53,8 @@ An intelligent FastAPI application that detects scam messages, generates honeypo
 - Python 3.13+
 - Google AI Studio API Key
 - Git
+- Strong interest in coding and practical programming skills
+- ☕ Sleep is optional & 🧠 Errors are personal
 
 ### 1. Get API Key (2 minutes)
 1. Visit [Google AI Studio](https://aistudio.google.com/apikey)
@@ -95,17 +97,17 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
-Server runs at: `http://127.0.0.1:8000`
+Server runs at: `https://127.0.0.1:8080`
 
 ### 5. Test It!
 ```bash
-curl -X POST http://127.0.0.1:8000/honeypot \
+curl -X POST https://127.0.0.1:8080/honeypot \
   -H "x-api-key: honeypot-test-key-2026-secure" \
   -H "Content-Type: application/json" \
   -d '{"message": "URGENT! Send money to scammer@paytm or call 9876543210"}'
 ```
 
-✅ **You're ready!** Visit `http://127.0.0.1:8000/docs` for interactive API documentation.
+✅ **You're ready!** Visit `https://127.0.0.1:8080/docs` for interactive API documentation.
 
 ---
 
@@ -266,7 +268,7 @@ SESSION_TIMEOUT_MINUTES = 30  # Adjust as needed
 
 ### Base URL
 ```
-http://127.0.0.1:8000
+https://127.0.0.1:8080
 ```
 
 ### Authentication
@@ -281,7 +283,7 @@ x-api-key: your-api-key-here
 
 #### 1. **GET /** - API Information
 ```bash
-curl http://127.0.0.1:8000/
+curl https://127.0.0.1:8080/
 ```
 
 **Response:**
@@ -298,7 +300,7 @@ curl http://127.0.0.1:8000/
 
 #### 2. **GET /health** - Health Check
 ```bash
-curl http://127.0.0.1:8000/health
+curl https://127.0.0.1:8080/health
 ```
 
 **Response:**
@@ -647,7 +649,7 @@ The project includes **191 comprehensive test cases** for Postman:
 
 ### Security Checklist
 
-- [ ] Change `HONEYPOT_API_KEY` to cryptographically secure random key
+- [ ] Change `HONEYPOT_API_KEY` to a cryptographically secure random key
 - [ ] Never commit `.env` file to version control
 - [ ] Use HTTPS in production
 - [ ] Implement rate limiting
@@ -686,7 +688,7 @@ server {
     server_name your-domain.com;
 
     location / {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass https://hcl-honeypot-api.onrender.com;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -828,8 +830,6 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - ✅ Free 750 hours/month
 - ✅ Built-in monitoring & logs
 
-**📖 Full deployment guide:** See [DEPLOYMENT.md](DEPLOYMENT.md)
-
 ---
 
 ## 📞 Support
@@ -842,7 +842,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 ## 🎯 Project Status
 
-✅ **Status:** Production Ready
+✅ **Status:** IN Production 
 
 **Latest Version:** 1.0.0
 
@@ -851,7 +851,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - ✅ Intelligence accumulation
 - ✅ LLM provider abstraction
 - ✅ Comprehensive logging
-- ✅ 191 Postman test cases
+- ✅ 200+ Postman test cases
 - ✅ Automatic session exit with 14+ exit keywords
 
 **Upcoming:**
@@ -860,18 +860,19 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - [ ] Conversation export API
 - [ ] Analytics dashboard
 - [ ] Rate limiting middleware
+- [ ] Portal With Dynamic Frontend 
 
 ---
 
 ## 📊 Stats
 
 - **Lines of Code:** ~2000+
-- **Test Cases:** 191
+- **Test Cases:** 191+
 - **API Endpoints:** 3
 - **Supported Models:** 4+ (Gemini family)
 - **Average Response Time:** 2-3 seconds
 - **Session Timeout:** 30 minutes
-
+- **This Server is using a free instance will spin down with inactivity of 15 minutes, which can delay requests by 15-50 seconds or more.**
 ---
 
-**Made with ❤️ by [0x-rudra](https://github.com/0x-rudra)**
+**Made with ❤️ Love and Passion by [0x-rudra](https://github.com/0x-rudra)**
