@@ -1,14 +1,30 @@
 """Pydantic schemas for request and response validation."""
 
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional, Union, Dict, Any
 
 
 class HoneypotRequest(BaseModel):
     """Request schema for honeypot endpoint."""
 
-    message: str = Field(..., description="The message to analyze for scams")
+    message: Union[str, Dict[str, Any]] = Field(..., description="The message to analyze for scams - can be a string or an object with 'text' field")
     session_id: Optional[str] = Field(None, description="Optional session ID for conversation continuity")
+    sessionId: Optional[str] = Field(None, description="Alternative camelCase session ID field")
+    conversationHistory: Optional[List[Dict[str, Any]]] = Field(None, description="Optional conversation history")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Optional metadata")
+
+    @field_validator('message')
+    @classmethod
+    def extract_message_text(cls, v):
+        """Extract text from message if it's an object."""
+        if isinstance(v, dict):
+            # Handle object format: {"sender": "...", "text": "...", "timestamp": ...}
+            return v.get('text', str(v))
+        return v
+    
+    def get_session_id(self) -> Optional[str]:
+        """Get session ID from either snake_case or camelCase field."""
+        return self.session_id or self.sessionId
 
 
 class ExtractedIntelligence(BaseModel):

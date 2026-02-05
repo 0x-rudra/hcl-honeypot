@@ -240,8 +240,9 @@ async def honeypot(
                 detail="Message too long (max 10000 characters)",
             )
 
-        # Validate session_id format if provided
-        if request.session_id and len(request.session_id) > 100:
+        # Validate session_id format if provided (check both formats)
+        session_id_value = request.get_session_id()
+        if session_id_value and len(session_id_value) > 100:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid session_id format",
@@ -249,7 +250,7 @@ async def honeypot(
 
         # Get or create session (supports automatic tracking by API key)
         session_id, session = session_manager.get_or_create_session(
-            session_id=request.session_id,
+            session_id=session_id_value,
             api_key=api_key  # Enable automatic session tracking
         )
         logger.info(f"Processing message in session {session_id}: {message[:50]}...")
