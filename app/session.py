@@ -76,6 +76,10 @@ class Session:
         logger.debug(f"Session {self.session_id}: Retrieved {len(history)} messages")
         return history
 
+    def get_message_count(self) -> int:
+        """Get total number of messages exchanged in this session."""
+        return len(self.messages)
+
     def get_context_for_llm(self, max_messages: int = 10) -> str:
         """
         Get recent conversation history formatted for LLM context.

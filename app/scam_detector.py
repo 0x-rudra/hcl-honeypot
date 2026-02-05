@@ -107,31 +107,28 @@ class ScamDetector:
         Returns:
             Dictionary with is_scam, confidence, and reasoning
         """
-        prompt = f"""Analyze this message and determine if it's a scam.
+        prompt = f"""Is this a scam message? Answer quickly.
 
 Message: "{message}"
 
-Provide your analysis in this exact format:
-1. Is it a scam? (YES or NO)
-2. Confidence (0.0 to 1.0, where 1.0 is definitely a scam)
-3. Reasoning (2-3 sentences explaining why)
+Keyword indicators found: {keyword_score:.0%}
 
-Context:
-- Keyword score: {keyword_score:.2f}
-- Be conservative: only mark as scam if there's clear evidence
-- Consider urgency, requests for sensitive info, impersonation
-- Return ONLY the three lines, nothing else
-"""
+Answer in 3 lines:
+1. YES or NO
+2. Confidence score 0.0-1.0
+3. Brief reason (one sentence)
+
+Response:"""
 
         llm = get_llm_provider()
         response_text = llm.generate_content(
             prompt=prompt,
             system_instruction=SCAM_DETECTOR_AGENT_INSTRUCTIONS,
             temperature=Config.AGENT_TEMPERATURE,
-            max_tokens=min(Config.AGENT_MAX_OUTPUT_TOKENS, 512),
+            max_tokens=Config.AGENT_MAX_OUTPUT_TOKENS,
             top_p=Config.AGENT_TOP_P,
             top_k=Config.AGENT_TOP_K,
-            timeout=10,
+            timeout=5,
         )
 
         # Parse the response

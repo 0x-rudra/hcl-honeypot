@@ -259,10 +259,10 @@ If none found, use empty lists."""
             prompt=prompt,
             system_instruction=EXTRACTOR_AGENT_INSTRUCTIONS,
             temperature=0.1,
-            max_tokens=500,
+            max_tokens=800,  # More tokens for better extraction
             top_p=0.95,
             top_k=40,
-            timeout=10,
+            timeout=5,
         )
 
         # Parse LLM response
@@ -302,3 +302,23 @@ If none found, use empty lists."""
         total_indicators = sum(len(v) for v in result.values())
         logger.info(f"Intelligence extraction complete: {total_indicators} indicators found")
         return result
+
+    @staticmethod
+    def convert_to_hackathon_format(intelligence: dict) -> dict:
+        """
+        Convert internal format to hackathon format.
+
+        Args:
+            intelligence: Dict with snake_case keys
+
+        Returns:
+            Dict with camelCase keys matching hackathon spec
+        """
+        return {
+            "bankAccounts": list(intelligence.get("bank_accounts", [])),
+            "upiIds": list(intelligence.get("upi_ids", [])),
+            "phishingLinks": list(intelligence.get("phishing_urls", [])),
+            "phoneNumbers": list(intelligence.get("phone_numbers", [])),
+            "suspiciousKeywords": []  # Can be populated from scam detection
+        }
+

@@ -16,11 +16,12 @@ except ImportError:
 
 from app.config import Config
 from app.auth import validate_api_key
-from app.schemas import HoneypotRequest, HoneypotResponse, ExtractedIntelligence, ConversationHistoryItem
+from app.schemas import HoneypotRequest, HoneypotResponse, ExtractedIntelligence
 from app.scam_detector import ScamDetector
 from app.persona import PersonaGenerator
 from app.extractor import IntelligenceExtractor
 from app.session import session_manager
+from app.callback import send_final_result
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +34,11 @@ async def lifespan(app: FastAPI):
     # Startup
     try:
         Config.validate()
+        logger.info("=" * 60)
+        logger.info("🚀 Honeypot API Starting Up")
         logger.info("Configuration validated successfully")
+        logger.info("NOTE: Render cold start may add 90s initial delay")
+        logger.info("=" * 60)
     except ValueError as e:
         logger.error(f"Configuration error: {e}")
         logger.warning("API will not function properly without GEMINI_API_KEY")
@@ -185,259 +190,194 @@ async def honeypot(
     api_key: str = Depends(validate_api_key),
 ) -> HoneypotResponse:
     """
-    Main honeypot endpoint with conversation support.
+    Main honeypot endpoint matching hackathon specification.
 
-    Detects scams, generates context-aware honeypot replies, and extracts intelligence.
+    Detects scam intent, activates AI Agent, and extracts intelligence.
+    Returns simple success/reply format as per hackathon requirements.
 
     Args:
-        raw_request: Raw request object for flexible body parsing
+        raw_request: Raw request object
         api_key: Validated API key from header
 
     Returns:
-        Structured response with scam detection results and conversation history
+        HoneypotResponse with status and reply
     """
+    import time
+    start_time = time.time()
+
     try:
-        # Parse request body with better error handling
+        # Parse request body
         try:
             body = await raw_request.json()
-            logger.info(f"Received body: {body}")
+            logger.info(f"Received request for session: {body.get('sessionId', 'unknown')}")
         except Exception as e:
-            logger.error(f"Failed to parse JSON body: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid JSON body. Expected format: {\"message\": \"your message here\"}",
+            logger.error(f"Failed to parse JSON: {e}")
+            return HoneypotResponse(
+                status="error",
+                reply="Invalid JSON format"
             )
 
-        # Validate request against schema
+        # Validate against schema
         try:
             request = HoneypotRequest(**body)
         except Exception as e:
             logger.error(f"Schema validation failed: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid request format: {str(e)}. Required field: 'message'",
-            )
-
-        # Input validation
-        if not request.message:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Message field is required",
-            )
-
-        message = request.message.strip()
-
-        if not message or len(message) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Message cannot be empty",
-            )
-
-        # Validate message length (max 10000 characters for safety)
-        if len(message) > 10000:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Message too long (max 10000 characters)",
-            )
-
-        # Validate session_id format if provided (check both formats)
-        session_id_value = request.get_session_id()
-        if session_id_value and len(session_id_value) > 100:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid session_id format",
-            )
-
-        # Get or create session (supports automatic tracking by API key)
-        session_id, session = session_manager.get_or_create_session(
-            session_id=session_id_value,
-            api_key=api_key  # Enable automatic session tracking
-        )
-        logger.info(f"Processing message in session {session_id}: {message[:50]}...")
-
-        # Check for exit command
-        session_ended = False
-        final_extraction_data = None
-        if session.is_exit_message(message):
-            logger.info(f"Exit command detected in session {session_id}")
-            session_ended = True
-
-            # Clear API key tracking so next message starts fresh
-            session_manager.clear_api_key_session(api_key)
-
-            # Add user message to conversation history before ending
-            session.add_message("user", message)
-
-            # Get final conversation data before deleting session
-            conversation_history = [
-                ConversationHistoryItem(**msg)
-                for msg in session.get_conversation_history()
-            ]
-            accumulated_intelligence = ExtractedIntelligence(
-                **session.get_accumulated_intelligence()
-            )
-
-            # End the session and extract final intelligence from full conversation
-            end_result = session_manager.end_session(session_id, extract_intelligence=True)
-            if end_result and end_result.get("final_extraction"):
-                final_extraction_data = end_result["final_extraction"]
-                logger.info(f"Final extraction completed: {sum(len(v) for v in final_extraction_data.values())} indicators")
-
-            # Return final response with session ended flag
             return HoneypotResponse(
-                is_scam=False,
-                confidence=0.0,
-                agent_reply="Goodbye! Session has been ended. Thank you for using the Honeypot API.",
-                extracted_intelligence=ExtractedIntelligence(),
-                reasoning="User requested to end the conversation",
-                session_id=session_id,
-                session_ended=True,
-                conversation_history=conversation_history,
-                accumulated_intelligence=accumulated_intelligence,
-                final_extraction=ExtractedIntelligence(**final_extraction_data) if final_extraction_data else None,
+                status="error",
+                reply=f"Invalid request format: {str(e)}"
             )
 
-        # Add user message to conversation history
-        session.add_message("user", message)
-
-        # Step 1: Detect if it's a scam
-        logger.info("Step 1: Starting scam detection...")
-        detection_result = ScamDetector.detect(message)
-
-        # Validate detection result
-        if not detection_result or not isinstance(detection_result, dict):
-            raise ValueError("Invalid detection result")
-
-        is_scam = detection_result.get("is_scam", False)
-        confidence = detection_result.get("confidence", 0.0)
-        reasoning = detection_result.get("reasoning", "Unable to determine classification")
-
-        # Ensure confidence is valid
-        if not isinstance(confidence, (int, float)) or confidence < 0 or confidence > 1:
-            confidence = 0.0
-
-        logger.info(f"Scam detection result: is_scam={is_scam}, confidence={confidence:.3f}")
-
-        # Step 2: Extract intelligence from the message
-        logger.info("Step 2: Extracting intelligence...")
-        intelligence = IntelligenceExtractor.extract(message)
-
-        # Validate intelligence result
-        if not isinstance(intelligence, dict):
-            intelligence = {}
-
-        current_extraction = ExtractedIntelligence(
-            bank_accounts=intelligence.get("bank_accounts", []) if intelligence else [],
-            upi_ids=intelligence.get("upi_ids", []) if intelligence else [],
-            phone_numbers=intelligence.get("phone_numbers", []) if intelligence else [],
-            phishing_urls=intelligence.get("phishing_urls", []) if intelligence else [],
-        )
-
-        total_indicators = sum(len(v) for v in intelligence.values()) if intelligence else 0
-        logger.info(f"Intelligence extracted: {total_indicators} total indicators")
-
-        # Update session intelligence
-        session.update_intelligence(intelligence)
-
-        # Get accumulated intelligence across the conversation (including current message)
-        accumulated_intelligence = ExtractedIntelligence(
-            **session.get_accumulated_intelligence()
-        )
-
-        # Step 3: Generate context-aware honeypot reply if it's a scam
-        agent_reply = ""
-        if is_scam:
-            try:
-                logger.info("Step 3: Generating context-aware honeypot reply...")
-                conversation_context = session.get_context_for_llm(max_messages=10)
-                agent_reply = PersonaGenerator.generate_reply(message, conversation_context)
-
-                # Validate reply
-                if not agent_reply or not isinstance(agent_reply, str):
-                    agent_reply = "I'm interested. Could you tell me more?"
-                    logger.warning("Generated empty reply, using fallback")
-
-                logger.info(f"Generated honeypot reply: {agent_reply[:50]}...")
-
-                # Add assistant reply to conversation history
-                session.add_message("assistant", agent_reply)
-            except Exception as e:
-                logger.error(f"Error generating reply: {e}")
-                # Use fallback reply if generation fails
-                agent_reply = "That sounds interesting. Can you provide more details?"
-                session.add_message("assistant", agent_reply)
+        # Extract message text
+        message = request.message
+        if isinstance(message, str):
+            message_text = message
         else:
-            logger.info("Step 3: Skipping honeypot reply (not a scam)")
+            message_text = str(message)
 
-        # Get conversation history
-        conversation_history = [
-            ConversationHistoryItem(**msg)
-            for msg in session.get_conversation_history()
-        ]
+        message_text = message_text.strip()
 
-        # Step 4: Build final response
-        logger.info("Step 4: Building final response...")
-        response = HoneypotResponse(
-            is_scam=is_scam,
-            confidence=confidence,
-            agent_reply=agent_reply,
-            extracted_intelligence=accumulated_intelligence,  # Show all accumulated intelligence
-            reasoning=reasoning,
+        if not message_text:
+            return HoneypotResponse(
+                status="error",
+                reply="Message cannot be empty"
+            )
+
+        session_id = request.sessionId
+        logger.info(f"Processing message in session {session_id}: {message_text[:100]}...")
+
+        # Get or create session
+        _, session = session_manager.get_or_create_session(
             session_id=session_id,
-            session_ended=False,
-            conversation_history=conversation_history,
-            accumulated_intelligence=accumulated_intelligence,
+            api_key=api_key
         )
 
-        logger.info(
-            f"✓ Request completed successfully: session={session_id}, "
-            f"is_scam={is_scam}, confidence={confidence:.3f}, "
-            f"total_messages={len(conversation_history)}, "
-            f"total_intelligence={sum(len(v) for v in accumulated_intelligence.model_dump().values())}"
-        )
-        return response
+        # Add user message to history
+        session.add_message("user", message_text)
 
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is (already properly formatted)
-        raise
-    except ValueError as e:
-        # Handle validation errors
-        error_msg = str(e)
-        logger.error(f"Validation error: {error_msg}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Validation error: {error_msg}",
+        # STEP 1: Scam detection with keyword scoring + AI validation
+        step_start = time.time()
+        logger.info("STEP 1: Detecting scam intent...")
+
+        # Quick keyword check first (instant)
+        from app.scam_detector import ScamDetector
+        keyword_score = ScamDetector.calculate_keyword_score(message_text)
+
+        if keyword_score < 0.2:
+            # Very low keyword score - definitely not a scam
+            logger.info(f"Very low keyword score ({keyword_score:.2f}) - not a scam")
+            return HoneypotResponse(
+                status="success",
+                reply="Thank you for your message.",
+                scamDetected=False,
+                confidence=keyword_score,
+                sessionId=session_id
+            )
+
+        # Use AI detection for better accuracy (with keyword score as context)
+        detection_result = ScamDetector.detect(message_text)
+        is_scam = detection_result.get("is_scam", keyword_score > 0.5)
+        confidence = detection_result.get("confidence", keyword_score)
+
+        step_time = time.time() - step_start
+        logger.info(f"STEP 1 completed in {step_time:.2f}s - Scam: {is_scam}, Confidence: {confidence:.2f}")
+
+        if not is_scam:
+            # AI confirmed not a scam
+            return HoneypotResponse(
+                status="success",
+                reply="Thank you for contacting us.",
+                scamDetected=False,
+                confidence=confidence,
+                sessionId=session_id
+            )
+
+        # STEP 2: Generate AI agent response (always use AI for human-like replies)
+        step_start = time.time()
+        logger.info("STEP 2: Generating AI agent response...")
+
+        try:
+            context = session.get_context_for_llm(max_messages=5)
+            agent_reply = PersonaGenerator.generate_reply(message_text, conversation_context=context)
+        except Exception as e:
+            logger.error(f"Error generating reply: {e}")
+            # Fallback to simple response
+            agent_reply = "wait what? why would that happen?"
+
+        step_time = time.time() - step_start
+        logger.info(f"STEP 2 completed in {step_time:.2f}s - Reply: {agent_reply[:50]}...")
+
+        # Add agent reply to history
+        session.add_message("assistant", agent_reply)
+
+        # STEP 3: Extract intelligence in background (don't wait for it)
+        step_start = time.time()
+        logger.info("STEP 3: Extracting intelligence...")
+        try:
+            intelligence_raw = IntelligenceExtractor.extract(message_text)
+            session.update_intelligence(intelligence_raw)
+            step_time = time.time() - step_start
+            logger.info(f"STEP 3 completed in {step_time:.2f}s")
+        except Exception as e:
+            step_time = time.time() - step_start
+            logger.error(f"Intelligence extraction failed after {step_time:.2f}s: {e}")
+            intelligence_raw = {}
+
+        # Convert intelligence to hackathon format
+        intelligence_hackathon = IntelligenceExtractor.convert_to_hackathon_format(
+            session.get_accumulated_intelligence()
         )
-    except KeyError as e:
-        # Handle missing data errors
-        logger.error(f"Missing required data: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error: Missing required data",
+
+        intelligence_obj = ExtractedIntelligence(**intelligence_hackathon)
+
+        # Check if we should send final callback (async, don't block response)
+        message_count = session.get_message_count()
+        total_indicators = sum(len(v) for v in intelligence_hackathon.values())
+
+        # Send final callback if we have significant intelligence (5+ indicators or 10+ messages)
+        if total_indicators >= 5 or message_count >= 10:
+            logger.info(f"Triggering final callback: {total_indicators} indicators, {message_count} messages")
+            reasoning = "Urgency tactics and information requests detected"
+            agent_notes = f"Scam tactics: {reasoning}. Total engagement: {message_count} messages."
+
+            # Send in background (don't wait for response)
+            try:
+                send_final_result(
+                    session_id=session_id,
+                    scam_detected=True,
+                    total_messages=message_count,
+                    intelligence=intelligence_obj,
+                    agent_notes=agent_notes
+                )
+            except Exception as e:
+                logger.error(f"Callback failed: {e}")
+
+        # Return response
+        elapsed_time = time.time() - start_time
+        logger.info(f"✓ Request completed in {elapsed_time:.2f}s")
+
+        return HoneypotResponse(
+            status="success",
+            reply=agent_reply,
+            scamDetected=True,
+            confidence=confidence,
+            extractedIntelligence=intelligence_obj,
+            sessionId=session_id
         )
+
     except TimeoutError:
-        # Handle timeout errors
-        logger.error("Request timeout")
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Request timeout: The operation took too long to complete",
+        elapsed_time = time.time() - start_time
+        logger.error(f"Request timeout after {elapsed_time:.2f}s")
+        return HoneypotResponse(
+            status="error",
+            reply="Request timeout"
         )
     except Exception as e:
-        # Catch all other errors
-        error_msg = str(e)
-        logger.error(f"Unexpected error processing request: {error_msg}", exc_info=True)
-
-        # Check if it's a quota/rate limit error
-        if "429" in error_msg or "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="API quota exceeded. Please try again later.",
-            )
-
-        # Generic error with safe message (don't expose internal details)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error occurred while processing request",
+        elapsed_time = time.time() - start_time
+        logger.error(f"Error after {elapsed_time:.2f}s: {e}", exc_info=True)
+        logger.error(f"Unexpected error: {e}", exc_info=True)
+        return HoneypotResponse(
+            status="error",
+            reply="Internal server error"
         )
 
 
