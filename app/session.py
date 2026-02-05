@@ -66,13 +66,13 @@ class Session:
         message = ConversationMessage(role, content)
         self.messages.append(message)
         self.last_activity = datetime.now()
-        
+
         # Track assistant replies to avoid repetition
         if role == "assistant":
             self.recent_replies.append(content.lower().strip())
             if len(self.recent_replies) > 5:
                 self.recent_replies.pop(0)
-        
+
         logger.info(
             f"Session {self.session_id}: Added {role} message "
             f"(total messages: {len(self.messages)})"

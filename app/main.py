@@ -303,7 +303,7 @@ async def honeypot(
             if not agent_reply or len(agent_reply.strip()) < 3:
                 logger.warning("Generated reply too short, regenerating...")
                 agent_reply = PersonaGenerator.generate_reply(message_text, conversation_context="", recent_replies=recent_replies)
-            
+
             # Check if reply is too similar to recent ones
             reply_lower = agent_reply.lower().strip()
             if reply_lower in recent_replies:

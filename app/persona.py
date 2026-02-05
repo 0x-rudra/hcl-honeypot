@@ -1,6 +1,6 @@
 """Honeypot persona generator using Google AI Studio agent."""
 
-from app.config import Config
+from typing import List
 from app.llm_provider import get_llm_provider
 import logging
 
@@ -61,7 +61,7 @@ class PersonaGenerator:
             A human-like honeypot reply (1-2 short sentences)
         """
         recent_replies = recent_replies or []
-        
+
         # Build context-aware prompt
         context_section = ""
         if conversation_context:
@@ -75,9 +75,10 @@ Stay consistent with your previous responses and personality.
         # Add recent replies to avoid repetition
         avoid_section = ""
         if recent_replies:
+            recent_list = "\n".join([f"- {r}" for r in recent_replies[-3:]])
             avoid_section = f"""
 DO NOT repeat these previous responses:
-" + "\n".join([f"- {r}" for r in recent_replies[-3:]]) + """
+{recent_list}
 
 Your new response must be completely DIFFERENT in words and structure.
 """
@@ -95,7 +96,7 @@ Your new response must be completely DIFFERENT in words and structure.
             response_hints = "Ask about payment details or amount."
         elif "otp" in message_lower or "code" in message_lower:
             response_hints = "Be willing but slightly confused about the code."
-        
+
         prompt = f"""Incoming text message: "{message}"
 
 You're a regular person receiving this. {response_hints}
