@@ -69,8 +69,3 @@ class FinalResultPayload(BaseModel):
     totalMessagesExchanged: int = Field(..., description="Total messages in conversation")
     extractedIntelligence: ExtractedIntelligence = Field(..., description="All extracted intelligence")
     agentNotes: str = Field(..., description="Summary of scammer behavior")
-        ..., description="All intelligence gathered across the conversation"
-    )
-    final_extraction: Optional[ExtractedIntelligence] = Field(
-        None, description="Final extraction from entire conversation when session ends"
-    )
