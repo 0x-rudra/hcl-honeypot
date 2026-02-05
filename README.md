@@ -41,7 +41,7 @@ An intelligent FastAPI application that detects scam messages, generates honeypo
 - [Testing](#-testing)
 - [Architecture](#-architecture)
 - [Production Deployment](#-production-deployment)
-- [Deploy to Render](#-deploy-to-render)
+- [Deploy to Fly.io](#-deploy-to-flyio)
 - [Troubleshooting](#-troubleshooting)
 - [Contributing](#-contributing)
 
@@ -807,28 +807,51 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🚀 Deploy to Render
+## 🚀 Deploy to Fly.io
 
-### **Quick Deploy (5 Minutes):**
+### **Quick Deploy (3-5 Minutes):**
 
-1. **Sign up at [Render.com](https://render.com)** (free, no credit card)
+1. **Install Fly.io CLI:**
+   ```powershell
+   # Windows PowerShell
+   iwr https://fly.io/install.ps1 -useb | iex
 
-2. **Create New Web Service:**
-   - Dashboard → "New +" → "Web Service"
-   - Connect your GitHub: `0x-rudra/hcl-honeypot`
-   - Render auto-detects `render.yaml`
+   # Mac/Linux
+   curl -L https://fly.io/install.sh | sh
+   ```
 
-3. **Set Environment Variable:**
-   - Add `GEMINI_API_KEY` = your-api-key
+2. **Login:**
+   ```bash
+   fly auth login
+   ```
 
-4. **Deploy!**
-   - Your API will be live at: `https://hcl-honeypot-api.onrender.com`
+3. **Deploy:**
+   ```bash
+   cd HCL-honeypot
 
-### **Features:**
-- ✅ Automatic HTTPS
-- ✅ Auto-deploy from GitHub
-- ✅ Free 750 hours/month
-- ✅ Built-in monitoring & logs
+   # Set secrets
+   fly secrets set GEMINI_API_KEY=your_gemini_api_key
+   fly secrets set API_KEY=honeypot-test-key-2026-secure
+
+   # Deploy
+   fly deploy
+   ```
+
+4. **Your API will be live at:**
+   ```
+   https://hcl-honeypot-api.fly.dev/honeypot
+   ```
+
+### **Why Fly.io?**
+- ✅ **No Cold Starts** - App stays warm 24/7 (unlike Render's 15min timeout)
+- ✅ **Fast Response** - Singapore region (low latency for India)
+- ✅ **Better Performance** - Dedicated resources, no sleep
+- ✅ **Real-time Logs** - `fly logs` for instant debugging
+- ✅ **Free Tier** - 3 shared VMs included
+- ✅ **Auto HTTPS** - Instant SSL certificates
+
+### **Complete Guide:**
+See [FLY_DEPLOYMENT.md](FLY_DEPLOYMENT.md) for detailed instructions.
 
 ---
 
@@ -842,7 +865,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 ## 🎯 Project Status
 
-✅ **Status:** IN Production 
+✅ **Status:** Production Ready
 
 **Latest Version:** 1.0.0
 
@@ -853,6 +876,9 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - ✅ Comprehensive logging
 - ✅ 200+ Postman test cases
 - ✅ Automatic session exit with 14+ exit keywords
+- ✅ **Migrated to Fly.io** - No more cold starts!
+- ✅ Human-like persona responses
+- ✅ Keyword + AI detection combined
 
 **Upcoming:**
 - [ ] OpenAI provider support
@@ -860,7 +886,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - [ ] Conversation export API
 - [ ] Analytics dashboard
 - [ ] Rate limiting middleware
-- [ ] Portal With Dynamic Frontend 
+- [ ] Portal With Dynamic Frontend
 
 ---
 
