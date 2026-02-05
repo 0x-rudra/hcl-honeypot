@@ -21,7 +21,7 @@ class HoneypotRequest(BaseModel):
             # Handle object format: {"sender": "...", "text": "...", "timestamp": ...}
             return v.get('text', str(v))
         return v
-    
+
     def get_session_id(self) -> Optional[str]:
         """Get session ID from either snake_case or camelCase field."""
         return self.session_id or self.sessionId
