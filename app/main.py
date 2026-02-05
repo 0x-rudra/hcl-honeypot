@@ -162,24 +162,37 @@ async def honeypot_info() -> dict:
     """
     GET endpoint for /honeypot that provides usage information.
 
-    Returns instructions on how to properly use the honeypot endpoint.
+    Returns instructions on how to properly use the honeypot endpoint with hackathon format.
     """
     return {
         "error": "Method Not Allowed",
-        "message": "This endpoint only accepts POST requests",
+        "message": "This endpoint only accepts POST requests with hackathon format",
         "usage": {
             "method": "POST",
             "url": "/honeypot",
             "headers": {
-                "x-api-key": "your-api-key-here",
+                "x-api-key": "honeypot-test-key-2026-secure",
                 "Content-Type": "application/json"
             },
             "body": {
-                "message": "Your message to analyze",
-                "session_id": "optional-session-id"
+                "sessionId": "unique-session-id",
+                "message": {
+                    "sender": "user",
+                    "text": "Your message text here",
+                    "timestamp": "2026-02-06T10:00:00Z"
+                },
+                "metadata": {
+                    "userAgent": "optional",
+                    "ipAddress": "optional"
+                },
+                "conversationHistory": []
             }
         },
-        "example_curl": 'curl -X POST https://hcl-honeypot-api.onrender.com/honeypot -H "x-api-key: your-key" -H "Content-Type: application/json" -d \'{"message": "Test message"}\'',
+        "example_curl": 'curl -X POST https://honeypoy-hcl-api-production.up.railway.app/honeypot -H "x-api-key: honeypot-test-key-2026-secure" -H "Content-Type: application/json" -d \'{"sessionId":"test-123","message":{"sender":"user","text":"hello","timestamp":"2026-02-06T10:00:00Z"}}\'',
+        "response_format": {
+            "status": "success",
+            "reply": "AI-generated human-like response"
+        },
         "documentation": "See POSTMAN_TESTING_GUIDE.md for detailed testing instructions"
     }
 
