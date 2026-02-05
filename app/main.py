@@ -175,24 +175,26 @@ async def honeypot_info() -> dict:
                 "Content-Type": "application/json"
             },
             "body": {
-                "sessionId": "unique-session-id",
+                "sessionId": "wertyu-dfghj-ertyui",
                 "message": {
-                    "sender": "user",
-                    "text": "Your message text here",
-                    "timestamp": "2026-02-06T10:00:00Z"
+                    "sender": "scammer",
+                    "text": "Your bank account will be blocked today. Verify immediately.",
+                    "timestamp": 1770005528731
                 },
                 "metadata": {
-                    "userAgent": "optional",
-                    "ipAddress": "optional"
+                    "channel": "SMS",
+                    "language": "English",
+                    "locale": "IN"
                 },
                 "conversationHistory": []
             }
         },
-        "example_curl": 'curl -X POST https://honeypoy-hcl-api-production.up.railway.app/honeypot -H "x-api-key: honeypot-test-key-2026-secure" -H "Content-Type: application/json" -d \'{"sessionId":"test-123","message":{"sender":"user","text":"hello","timestamp":"2026-02-06T10:00:00Z"}}\'',
+        "example_curl": 'curl -X POST https://honeypoy-hcl-api-production.up.railway.app/honeypot -H "x-api-key: honeypot-test-key-2026-secure" -H "Content-Type: application/json" -d \'{"sessionId":"wertyu-dfghj-ertyui","message":{"sender":"scammer","text":"Your bank account will be blocked today. Verify immediately.","timestamp":1770005528731},"conversationHistory":[],"metadata":{"channel":"SMS","language":"English","locale":"IN"}}\'',
         "response_format": {
             "status": "success",
-            "reply": "AI-generated human-like response"
+            "reply": "Why is my account being suspended?"
         },
+        "note": "Agent responses must be human-like and avoid revealing scam detection",
         "documentation": "See POSTMAN_TESTING_GUIDE.md for detailed testing instructions"
     }
 
