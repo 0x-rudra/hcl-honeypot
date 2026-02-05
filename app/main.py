@@ -277,46 +277,39 @@ async def honeypot(
         from app.scam_detector import ScamDetector
         keyword_score = ScamDetector.calculate_keyword_score(message_text)
 
-        if keyword_score < 0.2:
-            # Very low keyword score - definitely not a scam
-            logger.info(f"Very low keyword score ({keyword_score:.2f}) - not a scam")
-            return HoneypotResponse(
-                status="success",
-                reply="Thank you for your message.",
-                scamDetected=False,
-                confidence=keyword_score,
-                sessionId=session_id
-            )
-
         # Use AI detection for better accuracy (with keyword score as context)
         detection_result = ScamDetector.detect(message_text)
         is_scam = detection_result.get("is_scam", keyword_score > 0.5)
         confidence = detection_result.get("confidence", keyword_score)
 
         step_time = time.time() - step_start
-        logger.info(f"STEP 1 completed in {step_time:.2f}s - Scam: {is_scam}, Confidence: {confidence:.2f}")
+        logger.info(f"STEP 1 completed in {step_time:.2f}s - Scam: {is_scam}, Confidence: {confidence:.2f}, Keyword: {keyword_score:.2f}")
 
-        if not is_scam:
-            # AI confirmed not a scam
-            return HoneypotResponse(
-                status="success",
-                reply="Thank you for contacting us.",
-                scamDetected=False,
-                confidence=confidence,
-                sessionId=session_id
-            )
-
-        # STEP 2: Generate AI agent response (always use AI for human-like replies)
+        # STEP 2: Generate AI agent response (ALWAYS use AI for human-like replies)
         step_start = time.time()
         logger.info("STEP 2: Generating AI agent response...")
 
+        # Always generate a response using AI
         try:
             context = session.get_context_for_llm(max_messages=5)
             agent_reply = PersonaGenerator.generate_reply(message_text, conversation_context=context)
+
+            # Validate reply is not empty
+            if not agent_reply or len(agent_reply.strip()) < 3:
+                logger.warning("Generated reply too short, regenerating...")
+                agent_reply = PersonaGenerator.generate_reply(message_text, conversation_context="")
+
         except Exception as e:
-            logger.error(f"Error generating reply: {e}")
-            # Fallback to simple response
-            agent_reply = "wait what? why would that happen?"
+            logger.error(f"Error generating reply: {e}", exc_info=True)
+            # Fallback responses that vary based on message content
+            if "account" in message_text.lower() or "block" in message_text.lower():
+                agent_reply = "wait what?? why would that happen"
+            elif "verify" in message_text.lower() or "confirm" in message_text.lower():
+                agent_reply = "hmm okay... how do i do that?"
+            elif "urgent" in message_text.lower() or "immediate" in message_text.lower():
+                agent_reply = "oh no is this serious??"
+            else:
+                agent_reply = "what do you mean? can u explain"
 
         step_time = time.time() - step_start
         logger.info(f"STEP 2 completed in {step_time:.2f}s - Reply: {agent_reply[:50]}...")
