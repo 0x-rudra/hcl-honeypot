@@ -250,7 +250,7 @@ async def honeypot(
             message_text = message
         else:
             message_text = str(message)
-        
+
         logger.info(f"✓ Message extracted: {message_text[:100]}...")
 
         message_text = message_text.strip()
@@ -296,18 +296,25 @@ async def honeypot(
         # Always generate a response using AI
         try:
             context = session.get_context_for_llm(max_messages=5)
-            agent_reply = PersonaGenerator.generate_reply(message_text, conversation_context=context)
+            recent_replies = session.get_recent_replies()
+            agent_reply = PersonaGenerator.generate_reply(message_text, conversation_context=context, recent_replies=recent_replies)
 
-            # Validate reply is not empty
+            # Validate reply is not empty or duplicate
             if not agent_reply or len(agent_reply.strip()) < 3:
                 logger.warning("Generated reply too short, regenerating...")
-                agent_reply = PersonaGenerator.generate_reply(message_text, conversation_context="")
+                agent_reply = PersonaGenerator.generate_reply(message_text, conversation_context="", recent_replies=recent_replies)
+            
+            # Check if reply is too similar to recent ones
+            reply_lower = agent_reply.lower().strip()
+            if reply_lower in recent_replies:
+                logger.warning("Generated duplicate reply, regenerating...")
+                agent_reply = PersonaGenerator.generate_reply(message_text, conversation_context="", recent_replies=recent_replies)
 
         except Exception as e:
             logger.error(f"Error generating reply: {e}", exc_info=True)
             # Randomized fallback responses to prevent repetition
             import random
-            
+
             # Choose response based on message keywords
             if "account" in message_text.lower() or "block" in message_text.lower():
                 agent_reply = random.choice([

@@ -45,6 +45,7 @@ class Session:
         """
         self.session_id = session_id
         self.messages: List[ConversationMessage] = []
+        self.recent_replies: List[str] = []  # Track last 5 AI replies to avoid repetition
         self.created_at = datetime.now()
         self.last_activity = datetime.now()
         self.extracted_intelligence = {
@@ -65,6 +66,13 @@ class Session:
         message = ConversationMessage(role, content)
         self.messages.append(message)
         self.last_activity = datetime.now()
+        
+        # Track assistant replies to avoid repetition
+        if role == "assistant":
+            self.recent_replies.append(content.lower().strip())
+            if len(self.recent_replies) > 5:
+                self.recent_replies.pop(0)
+        
         logger.info(
             f"Session {self.session_id}: Added {role} message "
             f"(total messages: {len(self.messages)})"
@@ -79,6 +87,10 @@ class Session:
     def get_message_count(self) -> int:
         """Get total number of messages exchanged in this session."""
         return len(self.messages)
+
+    def get_recent_replies(self) -> List[str]:
+        """Get recent agent replies to avoid repetition."""
+        return self.recent_replies.copy()
 
     def get_context_for_llm(self, max_messages: int = 10) -> str:
         """

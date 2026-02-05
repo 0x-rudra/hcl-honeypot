@@ -48,17 +48,20 @@ class PersonaGenerator:
     """Generates human-like honeypot replies to engage scammers."""
 
     @staticmethod
-    def generate_reply(message: str, conversation_context: str = "") -> str:
+    def generate_reply(message: str, conversation_context: str = "", recent_replies: List[str] = None) -> str:
         """
         Generate a natural, human-like honeypot reply with conversation context.
 
         Args:
             message: The scam message to respond to
             conversation_context: Previous conversation history for context-aware replies
+            recent_replies: List of recent agent replies to avoid repetition
 
         Returns:
             A human-like honeypot reply (1-2 short sentences)
         """
+        recent_replies = recent_replies or []
+        
         # Build context-aware prompt
         context_section = ""
         if conversation_context:
@@ -66,19 +69,44 @@ class PersonaGenerator:
 Previous conversation:
 {conversation_context}
 
-Stay consistent with your previous responses and personality. Don't repeat yourself.
+Stay consistent with your previous responses and personality.
 """
 
+        # Add recent replies to avoid repetition
+        avoid_section = ""
+        if recent_replies:
+            avoid_section = f"""
+DO NOT repeat these previous responses:
+" + "\n".join([f"- {r}" for r in recent_replies[-3:]]) + """
+
+Your new response must be completely DIFFERENT in words and structure.
+"""
+
+        # Extract key words from message for context-aware response
+        message_lower = message.lower()
+        response_hints = ""
+        if "account" in message_lower or "block" in message_lower:
+            response_hints = "React to account blocking with surprise or confusion."
+        elif "verify" in message_lower or "confirm" in message_lower:
+            response_hints = "Ask how to verify or what needs confirmation."
+        elif "urgent" in message_lower or "immediate" in message_lower:
+            response_hints = "Show concern about the urgency."
+        elif "money" in message_lower or "pay" in message_lower:
+            response_hints = "Ask about payment details or amount."
+        elif "otp" in message_lower or "code" in message_lower:
+            response_hints = "Be willing but slightly confused about the code."
+        
         prompt = f"""Incoming text message: "{message}"
 
-You're a regular person receiving this. Respond naturally like you're texting.
+You're a regular person receiving this. {response_hints}
 
-CRITICAL: Make this response UNIQUE and different from previous ones. Vary your words, tone, and style.
+CRITICAL: Make this response UNIQUE and completely different from previous ones. Vary your words, tone, emotion, and style.
 
 RULES:
 - Write 1-2 SHORT sentences max (like real texts)
 - Be casual, natural, conversational
 - Show real human emotion (confusion, worry, curiosity)
+- React specifically to what they said
 - Use informal language and punctuation
 - Don't be formal or polite
 - Make it feel spontaneous and DIFFERENT each time
@@ -90,11 +118,11 @@ Write your unique text response (nothing else):"""
         random_temp = random.uniform(0.95, 1.0)
         random_top_p = random.uniform(0.92, 0.98)
         random_top_k = random.randint(45, 60)
-        
+
         llm = get_llm_provider()
         reply = llm.generate_content(
             prompt=prompt,
-            system_instruction=HONEYPOT_AGENT_INSTRUCTIONS + (f"\n\n{context_section}" if context_section else ""),
+            system_instruction=HONEYPOT_AGENT_INSTRUCTIONS + context_section + avoid_section,
             temperature=random_temp,  # Randomized for variation
             max_tokens=150,
             top_p=random_top_p,
