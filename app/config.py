@@ -11,7 +11,7 @@ class Config:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
 
     # LLM Model Configuration
-    # Supported models: gemini-2.5-flash, gemini-2.0-flash, gemma-3-4b-it, gemma-3-12b-it
+    # Supported models: gemini-1.5-flash, gemini-1.5-pro, gemini-2.0-flash-exp
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
     AGENT_TEMPERATURE: float = 0.9  # Higher for more natural variation

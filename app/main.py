@@ -224,9 +224,10 @@ async def honeypot(
         # Parse request body
         try:
             body = await raw_request.json()
-            logger.info(f"Received request for session: {body.get('sessionId', 'unknown')}")
+            logger.info(f"✓ Received request for session: {body.get('sessionId', 'unknown')}")
+            logger.debug(f"Request body: {body}")
         except Exception as e:
-            logger.error(f"Failed to parse JSON: {e}")
+            logger.error(f"❌ Failed to parse JSON: {e}")
             return HoneypotResponse(
                 status="error",
                 reply="Invalid JSON format"
@@ -235,8 +236,9 @@ async def honeypot(
         # Validate against schema
         try:
             request = HoneypotRequest(**body)
+            logger.info(f"✓ Schema validation passed")
         except Exception as e:
-            logger.error(f"Schema validation failed: {e}")
+            logger.error(f"❌ Schema validation failed: {e}")
             return HoneypotResponse(
                 status="error",
                 reply=f"Invalid request format: {str(e)}"
@@ -248,6 +250,8 @@ async def honeypot(
             message_text = message
         else:
             message_text = str(message)
+        
+        logger.info(f"✓ Message extracted: {message_text[:100]}...")
 
         message_text = message_text.strip()
 
@@ -301,15 +305,46 @@ async def honeypot(
 
         except Exception as e:
             logger.error(f"Error generating reply: {e}", exc_info=True)
-            # Fallback responses that vary based on message content
+            # Randomized fallback responses to prevent repetition
+            import random
+            
+            # Choose response based on message keywords
             if "account" in message_text.lower() or "block" in message_text.lower():
-                agent_reply = "wait what?? why would that happen"
+                agent_reply = random.choice([
+                    "wait what?? why would that happen",
+                    "huh? my accounts fine tho",
+                    "blocked? what do u mean",
+                    "thats weird.. why tho?"
+                ])
             elif "verify" in message_text.lower() or "confirm" in message_text.lower():
-                agent_reply = "hmm okay... how do i do that?"
+                agent_reply = random.choice([
+                    "hmm okay... how do i do that?",
+                    "verify what exactly?",
+                    "ok sure, what do u need",
+                    "alright.. what should i confirm"
+                ])
             elif "urgent" in message_text.lower() or "immediate" in message_text.lower():
-                agent_reply = "oh no is this serious??"
+                agent_reply = random.choice([
+                    "oh no is this serious??",
+                    "really? thats urgent??",
+                    "omg what happened",
+                    "wait is something wrong??"
+                ])
+            elif "money" in message_text.lower() or "pay" in message_text.lower() or "upi" in message_text.lower():
+                agent_reply = random.choice([
+                    "how much do i need to send?",
+                    "ok where should i pay",
+                    "whats the payment for?",
+                    "sure, send me the details"
+                ])
             else:
-                agent_reply = "what do you mean? can u explain"
+                agent_reply = random.choice([
+                    "what do you mean? can u explain",
+                    "hmm not sure i understand",
+                    "ok what should i do",
+                    "wait can u tell me more",
+                    "huh? what is this about"
+                ])
 
         step_time = time.time() - step_start
         logger.info(f"STEP 2 completed in {step_time:.2f}s - Reply: {agent_reply[:50]}...")

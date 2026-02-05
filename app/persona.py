@@ -71,7 +71,9 @@ Stay consistent with your previous responses and personality. Don't repeat yours
 
         prompt = f"""Incoming text message: "{message}"
 
-You're a regular person receiving this. Respond naturally like you're texting a friend.
+You're a regular person receiving this. Respond naturally like you're texting.
+
+CRITICAL: Make this response UNIQUE and different from previous ones. Vary your words, tone, and style.
 
 RULES:
 - Write 1-2 SHORT sentences max (like real texts)
@@ -79,18 +81,24 @@ RULES:
 - Show real human emotion (confusion, worry, curiosity)
 - Use informal language and punctuation
 - Don't be formal or polite
-- Make it feel spontaneous
+- Make it feel spontaneous and DIFFERENT each time
 
-Write your text response (nothing else):"""
+Write your unique text response (nothing else):"""
 
+        import random
+        # Add randomization for maximum variety
+        random_temp = random.uniform(0.95, 1.0)
+        random_top_p = random.uniform(0.92, 0.98)
+        random_top_k = random.randint(45, 60)
+        
         llm = get_llm_provider()
         reply = llm.generate_content(
             prompt=prompt,
             system_instruction=HONEYPOT_AGENT_INSTRUCTIONS + (f"\n\n{context_section}" if context_section else ""),
-            temperature=1.0,  # Maximum variation for natural human-like responses
-            max_tokens=150,  # Shorter for more natural, brief texts
-            top_p=0.95,
-            top_k=50,
+            temperature=random_temp,  # Randomized for variation
+            max_tokens=150,
+            top_p=random_top_p,
+            top_k=random_top_k,
             timeout=5,
         )
 
